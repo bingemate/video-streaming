@@ -28,7 +28,7 @@ type MediaChunk struct {
 	StartTime  float32
 	EndTime    float32
 	ByteOffset int64
-	Size       uint32
+	Size       int64
 }
 
 type MediaDescription struct {
@@ -42,22 +42,27 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 		return nil, err
 	}
 	mediaDescription := MediaDescription{
-		MetadataSize: info.Segments[0].MoofOffset - 1,
+		MetadataSize: info.Segments[0].MoofOffset,
 		Chunks:       make([]MediaChunk, len(info.Segments)),
 	}
 	var timer float32
-	for index, segment := range info.Segments {
+	for i := 0; i < len(info.Segments); i++ {
+		segment := info.Segments[i]
 		duration := float32(segment.Duration) / float32(info.Tracks[segment.TrackID-1].Timescale)
 		endTime := timer + duration
 		chunk := MediaChunk{
 			ByteOffset: int64(segment.MoofOffset),
-			Size:       segment.Size,
 			StartTime:  timer,
 			EndTime:    endTime,
 		}
 		timer = endTime
-		mediaDescription.Chunks[index] = chunk
+		mediaDescription.Chunks[i] = chunk
+		if i > 0 {
+			mediaDescription.Chunks[i-1].Size = int64(segment.MoofOffset) - mediaDescription.Chunks[i-1].ByteOffset
+		}
 	}
+	fi, _ := file.Stat()
+	mediaDescription.Chunks[len(info.Segments)-1].Size = fi.Size()
 	return &mediaDescription, nil
 }
 
@@ -71,31 +76,30 @@ func (m *MediaDescription) SeekChunk(timeCode float32) (int, error) {
 }
 
 func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_GetVideoStreamServer) error {
-	fmt.Printf("test")
 	file, err := os.Open(fmt.Sprintf("./out/%d.mp4", req.VideoId))
 	if err != nil {
 		return status.Errorf(codes.Internal, "Erreur de lecture du media: %v", err)
 	}
-	fmt.Printf("test")
 	defer file.Close()
 	mediaDescription, err := ReadMediaDescription(file)
+
+	if _, err = file.Seek(0, 0); err != nil {
+		return err
+	}
 	// Send metadata
 	buf := make([]byte, mediaDescription.MetadataSize)
 	n, err := file.Read(buf)
-	fmt.Printf("test")
 	if err != nil {
 		return status.Errorf(codes.Internal, "Erreur de lecture du fichier de sortie: %v", err)
 	}
 	if err := stream.Send(&pb.VideoResponse{MetaData: buf[:n]}); err != nil {
 		return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 	}
-	fmt.Printf("test")
 	i, err := mediaDescription.SeekChunk(req.Seek)
 	if err != nil {
 		return err
 	}
 	// Send chunks
-	fmt.Printf("test")
 	for ; i < len(mediaDescription.Chunks); i++ {
 		chunk := mediaDescription.Chunks[i]
 		buf := make([]byte, chunk.Size)
@@ -114,7 +118,6 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 			return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 		}
 	}
-	fmt.Printf("fin")
 
 	return nil
 }
@@ -124,10 +127,22 @@ func main() {
 	if err != nil {
 		log.Fatalf("Échec de l'écoute sur le port %v: %v", port, err)
 	}
-	s := grpc.NewServer()
-	wrappedServer := grpcweb.WrapServer(s)
-	pb.RegisterVideoServiceServer(s, &server{})
+	grpcServer := grpc.NewServer()
+	wrappedServer := grpcweb.WrapServer(grpcServer)
+	pb.RegisterVideoServiceServer(grpcServer, &server{})
 	handler := func(resp http.ResponseWriter, req *http.Request) {
+		if req.Method == http.MethodOptions {
+			resp.Header().Set("Access-Control-Allow-Origin", "*")
+			resp.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			resp.Header().Set("Access-Control-Allow-Headers", "Content-Type, x-grpc-web, x-user-agent")
+			resp.Header().Set("Access-Control-Max-Age", "600")
+			resp.WriteHeader(http.StatusOK)
+			return
+		}
+		resp.Header().Set("Access-Control-Allow-Origin", "*")
+		resp.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		resp.Header().Set("Access-Control-Allow-Headers", "Content-Type, x-grpc-web, x-user-agent")
+		resp.Header().Set("Access-Control-Allow-Credentials", "true")
 		if wrappedServer.IsGrpcWebRequest(req) {
 			wrappedServer.ServeHTTP(resp, req)
 		} else {
