@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/abema/go-mp4"
+	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/sunfish-shogi/bufseekio"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -10,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	pb "video-streaming/proto"
 )
@@ -69,26 +71,31 @@ func (m *MediaDescription) SeekChunk(timeCode float32) (int, error) {
 }
 
 func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_GetVideoStreamServer) error {
+	fmt.Printf("test")
 	file, err := os.Open(fmt.Sprintf("./out/%d.mp4", req.VideoId))
 	if err != nil {
 		return status.Errorf(codes.Internal, "Erreur de lecture du media: %v", err)
 	}
+	fmt.Printf("test")
 	defer file.Close()
 	mediaDescription, err := ReadMediaDescription(file)
 	// Send metadata
 	buf := make([]byte, mediaDescription.MetadataSize)
 	n, err := file.Read(buf)
+	fmt.Printf("test")
 	if err != nil {
 		return status.Errorf(codes.Internal, "Erreur de lecture du fichier de sortie: %v", err)
 	}
 	if err := stream.Send(&pb.VideoResponse{MetaData: buf[:n]}); err != nil {
 		return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 	}
+	fmt.Printf("test")
 	i, err := mediaDescription.SeekChunk(req.Seek)
 	if err != nil {
 		return err
 	}
 	// Send chunks
+	fmt.Printf("test")
 	for ; i < len(mediaDescription.Chunks); i++ {
 		chunk := mediaDescription.Chunks[i]
 		buf := make([]byte, chunk.Size)
@@ -107,6 +114,7 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 			return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 		}
 	}
+	fmt.Printf("fin")
 
 	return nil
 }
@@ -117,8 +125,16 @@ func main() {
 		log.Fatalf("Échec de l'écoute sur le port %v: %v", port, err)
 	}
 	s := grpc.NewServer()
+	wrappedServer := grpcweb.WrapServer(s)
 	pb.RegisterVideoServiceServer(s, &server{})
-	if err := s.Serve(lis); err != nil {
+	handler := func(resp http.ResponseWriter, req *http.Request) {
+		if wrappedServer.IsGrpcWebRequest(req) {
+			wrappedServer.ServeHTTP(resp, req)
+		} else {
+			http.NotFound(resp, req)
+		}
+	}
+	if err := http.Serve(lis, http.HandlerFunc(handler)); err != nil {
 		log.Fatalf("Échec du lancement du serveur gRPC: %v", err)
 	}
 }
