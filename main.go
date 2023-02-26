@@ -59,8 +59,8 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 	return &mediaDescription, nil
 }
 
-func SeekChunk(timeCode float32, chunks []MediaChunk) (int, error) {
-	for index, chunk := range chunks {
+func (m *MediaDescription) SeekChunk(timeCode float32) (int, error) {
+	for index, chunk := range m.Chunks {
 		if timeCode >= chunk.StartTime && timeCode <= chunk.EndTime {
 			return index, nil
 		}
@@ -84,7 +84,7 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 	if err := stream.Send(&pb.VideoResponse{MetaData: buf[:n]}); err != nil {
 		return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 	}
-	i, err := SeekChunk(req.Seek, mediaDescription.Chunks)
+	i, err := mediaDescription.SeekChunk(req.Seek)
 	if err != nil {
 		return err
 	}
