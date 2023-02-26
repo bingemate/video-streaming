@@ -23,8 +23,8 @@ type server struct {
 }
 
 type MediaChunk struct {
-	StartTime  float64
-	EndTime    float64
+	StartTime  float32
+	EndTime    float32
 	ByteOffset int64
 	Size       uint32
 }
@@ -43,9 +43,9 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 		MetadataSize: info.Segments[0].MoofOffset - 1,
 		Chunks:       make([]MediaChunk, len(info.Segments)),
 	}
-	var timer float64
+	var timer float32
 	for index, segment := range info.Segments {
-		duration := float64(segment.Duration) / float64(info.Tracks[segment.TrackID-1].Timescale)
+		duration := float32(segment.Duration) / float32(info.Tracks[segment.TrackID-1].Timescale)
 		endTime := timer + duration
 		chunk := MediaChunk{
 			ByteOffset: int64(segment.MoofOffset),
@@ -57,6 +57,15 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 		mediaDescription.Chunks[index] = chunk
 	}
 	return &mediaDescription, nil
+}
+
+func SeekChunk(timeCode float32, chunks []MediaChunk) (int, error) {
+	for index, chunk := range chunks {
+		if timeCode >= chunk.StartTime && timeCode <= chunk.EndTime {
+			return index, nil
+		}
+	}
+	return 0, status.Errorf(codes.NotFound, "Impossible de trouver un segment pour le time code %f", timeCode)
 }
 
 func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_GetVideoStreamServer) error {
@@ -75,11 +84,15 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 	if err := stream.Send(&pb.VideoResponse{MetaData: buf[:n]}); err != nil {
 		return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 	}
+	i, err := SeekChunk(req.Seek, mediaDescription.Chunks)
+	if err != nil {
+		return err
+	}
 	// Send chunks
-	for _, chunk := range mediaDescription.Chunks {
+	for ; i < len(mediaDescription.Chunks); i++ {
+		chunk := mediaDescription.Chunks[i]
 		buf := make([]byte, chunk.Size)
-		_, err := file.Seek(chunk.ByteOffset, 0)
-		if err != nil {
+		if _, err := file.Seek(chunk.ByteOffset, 0); err != nil {
 			return err
 		}
 		n, err := file.Read(buf)
