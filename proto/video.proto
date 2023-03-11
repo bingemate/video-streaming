@@ -10,7 +10,6 @@ message VideoRequest {
 
 message VideoResponse {
   bytes data = 1;
-  bytes metaData = 2;
 }
 
 service VideoService {

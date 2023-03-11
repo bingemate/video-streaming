@@ -36,6 +36,14 @@ type MediaDescription struct {
 	Chunks       []MediaChunk
 }
 
+func mapTracks(tracks mp4.Tracks) map[uint32]*mp4.Track {
+	m := make(map[uint32]*mp4.Track)
+	for _, track := range tracks {
+		m[track.TrackID] = track
+	}
+	return m
+}
+
 func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 	info, err := mp4.Probe(bufseekio.NewReadSeeker(file, 1024, 4))
 	if err != nil {
@@ -45,10 +53,11 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 		MetadataSize: info.Segments[0].MoofOffset,
 		Chunks:       make([]MediaChunk, len(info.Segments)),
 	}
+	tracks := mapTracks(info.Tracks)
 	var timer float32
 	for i := 0; i < len(info.Segments); i++ {
 		segment := info.Segments[i]
-		duration := float32(segment.Duration) / float32(info.Tracks[segment.TrackID-1].Timescale)
+		duration := float32(segment.Duration) / float32(tracks[segment.TrackID].Timescale)
 		endTime := timer + duration
 		chunk := MediaChunk{
 			ByteOffset: int64(segment.MoofOffset),
@@ -92,7 +101,7 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 	if err != nil {
 		return status.Errorf(codes.Internal, "Erreur de lecture du fichier de sortie: %v", err)
 	}
-	if err := stream.Send(&pb.VideoResponse{MetaData: buf[:n]}); err != nil {
+	if err := stream.Send(&pb.VideoResponse{Data: buf[:n]}); err != nil {
 		return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 	}
 	i, err := mediaDescription.SeekChunk(req.Seek)
