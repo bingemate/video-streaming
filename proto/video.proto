@@ -5,11 +5,14 @@ option go_package = "./";
 
 message VideoRequest {
   uint64 video_id = 1;
-  float seek = 2;
+  double seek = 2;
 }
 
 message VideoResponse {
-  bytes data = 1;
+  optional bytes data = 1;
+  optional bytes metadata = 2;
+  optional double startTime = 3;
+  optional double endTime = 4;
 }
 
 service VideoService {

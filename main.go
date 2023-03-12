@@ -25,8 +25,8 @@ type server struct {
 }
 
 type MediaChunk struct {
-	StartTime  float32
-	EndTime    float32
+	StartTime  float64
+	EndTime    float64
 	ByteOffset int64
 	Size       int64
 }
@@ -54,10 +54,10 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 		Chunks:       make([]MediaChunk, len(info.Segments)),
 	}
 	tracks := mapTracks(info.Tracks)
-	var timer float32
+	var timer float64
 	for i := 0; i < len(info.Segments); i++ {
 		segment := info.Segments[i]
-		duration := float32(segment.Duration) / float32(tracks[segment.TrackID].Timescale)
+		duration := float64(segment.Duration) / float64(tracks[segment.TrackID].Timescale)
 		endTime := timer + duration
 		chunk := MediaChunk{
 			ByteOffset: int64(segment.MoofOffset),
@@ -75,7 +75,7 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 	return &mediaDescription, nil
 }
 
-func (m *MediaDescription) SeekChunk(timeCode float32) (int, error) {
+func (m *MediaDescription) SeekChunk(timeCode float64) (int, error) {
 	for index, chunk := range m.Chunks {
 		if timeCode >= chunk.StartTime && timeCode <= chunk.EndTime {
 			return index, nil
@@ -101,12 +101,14 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 	if err != nil {
 		return status.Errorf(codes.Internal, "Erreur de lecture du fichier de sortie: %v", err)
 	}
-	if err := stream.Send(&pb.VideoResponse{Data: buf[:n]}); err != nil {
-		return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
-	}
 	i, err := mediaDescription.SeekChunk(req.Seek)
 	if err != nil {
 		return err
+	}
+	if i == 0 {
+		if err := stream.Send(&pb.VideoResponse{Metadata: buf[:n]}); err != nil {
+			return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
+		}
 	}
 	// Send chunks
 	for ; i < len(mediaDescription.Chunks); i++ {
@@ -122,8 +124,8 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 			}
 			return status.Errorf(codes.Internal, "Erreur de lecture du fichier de sortie: %v", err)
 		}
-
-		if err := stream.Send(&pb.VideoResponse{Data: buf[:n]}); err != nil {
+		chunkRes := &pb.VideoResponse{Data: buf[:n], StartTime: &chunk.StartTime, EndTime: &chunk.EndTime}
+		if err := stream.Send(chunkRes); err != nil {
 			return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 		}
 	}
