@@ -58,7 +58,12 @@ func ReadMediaDescription(file *os.File) (*MediaDescription, error) {
 	for i := 0; i < len(info.Segments); i++ {
 		segment := info.Segments[i]
 		duration := float64(segment.Duration) / float64(tracks[segment.TrackID].Timescale)
-		endTime := timer + duration
+		var endTime float64
+		if tracks[segment.TrackID].MP4A != nil {
+			endTime = timer + duration
+		} else {
+			endTime = 0
+		}
 		chunk := MediaChunk{
 			ByteOffset: int64(segment.MoofOffset),
 			StartTime:  timer,
