@@ -110,10 +110,8 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 	if err != nil {
 		return err
 	}
-	if i == 0 {
-		if err := stream.Send(&pb.VideoResponse{Metadata: buf[:n]}); err != nil {
-			return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
-		}
+	if err := stream.Send(&pb.VideoResponse{Metadata: buf[:n]}); err != nil {
+		return status.Errorf(codes.Internal, "Erreur d'envoi des données de la vidéo: %v", err)
 	}
 	// Send chunks
 	for ; i < len(mediaDescription.Chunks); i++ {
