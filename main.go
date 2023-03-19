@@ -36,6 +36,13 @@ type MediaDescription struct {
 	Chunks       []MediaChunk
 }
 
+func max(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 func mapTracks(tracks mp4.Tracks) map[uint32]*mp4.Track {
 	m := make(map[uint32]*mp4.Track)
 	for _, track := range tracks {
@@ -106,7 +113,7 @@ func (s *server) GetVideoStream(req *pb.VideoRequest, stream pb.VideoService_Get
 	if err != nil {
 		return status.Errorf(codes.Internal, "Erreur de lecture du fichier de sortie: %v", err)
 	}
-	i, err := mediaDescription.SeekChunk(req.Seek)
+	i, err := mediaDescription.SeekChunk(max(0, req.Seek-60))
 	if err != nil {
 		return err
 	}
