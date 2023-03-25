@@ -3,18 +3,52 @@ syntax = "proto3";
 package proto;
 option go_package = "./";
 
-message VideoRequest {
+message VideoChunkRequest {
   uint64 video_id = 1;
   double seek = 2;
 }
 
-message VideoResponse {
-  optional bytes data = 1;
-  optional bytes metadata = 2;
-  optional double startTime = 3;
-  optional double endTime = 4;
+message VideoMetadataRequest {
+  uint64 video_id = 1;
+}
+
+message TrackLanguage {
+  string language = 1;
+  string name = 2;
+}
+
+message VideoMetadata {
+  bytes metadata = 1;
+  double video_duration = 2;
+  repeated TrackLanguage text_track_languages = 3;
+  repeated TrackLanguage audio_track_languages = 4;
+}
+
+message VideoTextTrackRequest {
+  string language = 1;
+}
+
+message VideoTextTrack {
+  bytes text_track = 1;
+}
+
+message VideoAudioTrackRequest {
+  string language = 1;
+}
+
+message VideoAudioTrack {
+  bytes audio_track = 1;
+}
+
+message VideoChunk {
+  bytes data = 1;
+  double start_time = 2;
+  double end_time = 3;
 }
 
 service VideoService {
-  rpc GetVideoStream (VideoRequest) returns (stream VideoResponse) {}
+  rpc GetVideoChunk (VideoChunkRequest) returns (VideoChunk) {}
+  rpc GetVideoMetadata (VideoMetadataRequest) returns (VideoMetadata) {}
+  rpc GetVideoTextTrack (VideoTextTrackRequest) returns (VideoTextTrack) {}
+  rpc GetVideoAudioTrack (VideoAudioTrackRequest) returns (VideoAudioTrack) {}
 }
