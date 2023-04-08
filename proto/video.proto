@@ -5,7 +5,8 @@ option go_package = "./";
 
 message VideoChunkRequest {
   uint64 video_id = 1;
-  double seek = 2;
+  string audio_track_id = 2;
+  double seek = 3;
 }
 
 message VideoMetadataRequest {
@@ -13,8 +14,10 @@ message VideoMetadataRequest {
 }
 
 message TrackLanguage {
-  string language = 1;
-  string name = 2;
+  uint32 id = 1;
+  string language = 2;
+  string name = 3;
+  string codec = 4;
 }
 
 message VideoMetadata {
@@ -25,19 +28,11 @@ message VideoMetadata {
 }
 
 message VideoTextTrackRequest {
-  string language = 1;
+  string track_id = 1;
 }
 
 message VideoTextTrack {
   bytes text_track = 1;
-}
-
-message VideoAudioTrackRequest {
-  string language = 1;
-}
-
-message VideoAudioTrack {
-  bytes audio_track = 1;
 }
 
 message VideoChunk {
@@ -50,5 +45,4 @@ service VideoService {
   rpc GetVideoChunk (VideoChunkRequest) returns (VideoChunk) {}
   rpc GetVideoMetadata (VideoMetadataRequest) returns (VideoMetadata) {}
   rpc GetVideoTextTrack (VideoTextTrackRequest) returns (VideoTextTrack) {}
-  rpc GetVideoAudioTrack (VideoAudioTrackRequest) returns (VideoAudioTrack) {}
 }
