@@ -1,4 +1,23 @@
-<h1>Vidéo</h1>
-<video controls>
-    <source src="http://localhost:8000/stream" type="application/x-mpegURL">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Player</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<video id="videoPlayer" controls>
+    <source src="http://localhost:8001/video" type="video/mp4" width="1280"/>
 </video>
+
+<div id="controls">
+    <button id="play">Play</button>
+    <button id="pause">Pause</button>
+    <input type="range" id="seek" />
+    <button id="stop">Stop</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
