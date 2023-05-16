@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/gin-gonic/gin v1.9.0
-	github.com/notedit/gst v0.1.3
+	github.com/notedit/gstreamer-go v0.3.1
 )
 
 require (
