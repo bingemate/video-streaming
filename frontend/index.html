@@ -10,20 +10,20 @@
 <body>
 <video id="video" width="640" height="360" controls></video>
 <script>
+
     var video = document.getElementById('video');
 
-    var videoSrc = 'http://localhost:5000/file.mkv/output.m3u8';
-    var audioSrc = 'http://localhost:5000/file.mkv/audio_1.m3u8';
+    var videoSrc = 'http://localhost:5000/file.mkv/index.m3u8';
 
     shaka.polyfill.installAll();
-
     if (shaka.Player.isBrowserSupported()) {
         initPlayer();
     } else {
         console.error('Browser not supported!');
-    }
 
+    }
     function initPlayer() {
+
         var player = new shaka.Player(video);
 
         player.configure({
