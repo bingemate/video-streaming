@@ -1,8 +1,8 @@
 import os
 import subprocess
 
-input_file = "/home/nospy/Téléchargements/media/file.mkv"
-output_folder = "/home/nospy/Téléchargements/media/hls/" + input_file.split("/")[-1]
+input_file = "/home/nospy/Téléchargements/file.mkv"
+output_folder = "/home/nospy/Téléchargements/streaming/" + input_file.split("/")[-1]
 chunk_duration = 10  # durée des segments en secondes
 
 # Création du dossier de sortie
@@ -46,35 +46,39 @@ ffmpeg_video_command = [
     "ffmpeg",
     "-i", input_file,
     "-map", "0:0",  # Sélectionnez seulement la première piste vidéo
-    "-map", "0:1",  # Ajouter la première piste audio à la liste des pistes à ignorer
-    "-c:a", "aac",
-    "-b:a", "128k",
+    # "-map", "0:1",  # Ajouter la première piste audio à la liste des pistes à ignorer
+    # "-map", "0:2",  # Ajouter la première piste audio à la liste des pistes à ignorer
+    # "-c:a", "aac",
+    # "-b:a", "160k",
+    # "-ac", "2",
     "-c:v", "libx264",
     "-preset", "ultrafast",
+    "-pix_fmt", "yuv420p",
     "-hls_time", f"{chunk_duration}",
     "-hls_playlist_type", "vod",
     "-hls_segment_filename", f"{output_folder}/segment_%03d.ts",
     "-hls_flags", "delete_segments",
-    "-f", "hls", f"{output_folder}/output.m3u8"
+    "-f", "hls", f"{output_folder}/index.m3u8"
 ]
 subprocess.run(ffmpeg_video_command)
 
 # Extraction de chaque piste audio
-# for audio_stream in audio_streams:
-#     audio_output_file = f"{output_folder}/audio_{audio_stream}.m3u8"
-#     ffmpeg_audio_command = [
-#         "ffmpeg",
-#         "-i", input_file,
-#         "-map", f"0:{audio_stream}",
-#         "-c:a", "aac",
-#         "-b:a", "128k",
-#         "-hls_time", f"{chunk_duration}",
-#         "-hls_playlist_type", "vod",
-#         "-hls_segment_filename", f"{output_folder}/audio_{audio_stream}_%03d.ts",
-#         audio_output_file
-#     ]
-#     subprocess.run(ffmpeg_audio_command)
-#     print("Piste audio extraite :", audio_output_file)
+for audio_stream in audio_streams:
+    audio_output_file = f"{output_folder}/audio_{audio_stream}.m3u8"
+    ffmpeg_audio_command = [
+        "ffmpeg",
+        "-i", input_file,
+        "-map", f"0:{audio_stream}",
+        "-c:a", "aac",
+        "-b:a", "160k",
+        "-ac", "2",
+        "-hls_time", f"{chunk_duration}",
+        "-hls_playlist_type", "vod",
+        "-hls_segment_filename", f"{output_folder}/audio_{audio_stream}_%03d.ts",
+        audio_output_file
+    ]
+    subprocess.run(ffmpeg_audio_command)
+    print("Piste audio extraite :", audio_output_file)
 
 # Extraction de chaque piste de sous-titres
 for subtitle_stream in subtitle_streams:
