@@ -1,34 +1,33 @@
-FROM golang:1.20-bullseye as builder
+# Étape de construction
+FROM golang:1.20 AS builder
 
-# Copie le code Go dans le conteneur.
-COPY . /app
-
-# Se déplace dans le répertoire de travail de l'application.
 WORKDIR /app
 
-RUN apt update && \
-    apt install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libgstreamer-plugins-bad1.0-dev gstreamer1.0-libav
+# Copier les fichiers de l'application
+COPY . .
 
-# Compile l'application Go.
-RUN go build -o video-player .
+# Compilation de l'application
+RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
 
-# Définit l'image de base.
-FROM debian:bullseye-slim
+# Étape de production
+FROM alpine:latest
 
-# Installe les dépendances nécessaires pour GStreamer.
-RUN apt update && \
-    apt install -y libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 libgstreamer-plugins-bad1.0-0 gstreamer1.0-libav && \
-    rm -rf /var/lib/apt/lists/* && \
-    rm -rf /var/cache/apt/*
+# Installation des dépendances nécessaires
+RUN apk --no-cache add ca-certificates
 
-# Copie l'application compilée dans l'image.
-COPY --from=builder /app/video-player /app/video-player
+WORKDIR /root/
 
-# Expose le port utilisé par l'application.
+# Copier l'exécutable construit précédemment
+COPY --from=builder /app/app .
+
+ENV VIDEO_ROOT=/mnt/media
+
+# Définir le dossier /mnt/media en tant que volume
+VOLUME ["/mnt/media"]
+
+# Exposition du port de l'application
 EXPOSE 8080
 
-# Se déplace dans le répertoire de travail de l'application.
-WORKDIR /app
-
-# Démarre l'application vidéo.
-ENTRYPOINT ["./video-player"]
+# Commande pour démarrer l'application
+CMD ["./app"]

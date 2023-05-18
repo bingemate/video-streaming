@@ -6,6 +6,6 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - /home/nospy/Téléchargements/media:/mnt/media
+      - /home/nospy/Téléchargements/streaming:/mnt/media
     ports:
       - "8080:8080"
