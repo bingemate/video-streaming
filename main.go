@@ -24,7 +24,9 @@ func main() {
 	}
 
 	// Route pour servir les fichiers statiques
-	router.StaticFS("/", http.Dir(rootDir))
+	group := router.Group("/streaming-service")
+
+	group.StaticFS("/", http.Dir(rootDir))
 
 	router.Run() // Lance le serveur
 }
