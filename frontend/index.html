@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mux.js/6.3.0/mux.min.js"
+            integrity="sha512-mC7/Okc2DQtEIn42I2mpODmNX3NSPrMiAhQt6ua3GsdMe1PRV77EjszmNdhfCriykcsPjd6omd+ZJPdXMxGGkA=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/shaka-player.ui.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.6/controls.css">
+</head>
+<body>
+<video id="video" width="640" height="360" controls></video>
+<script>
+
+    var video = document.getElementById('video');
+
+    var videoSrc = 'http://localhost:5000/file.mkv/index.m3u8';
+
+    shaka.polyfill.installAll();
+    if (shaka.Player.isBrowserSupported()) {
+        initPlayer();
+    } else {
+        console.error('Browser not supported!');
+
+    }
+    function initPlayer() {
+
+        var player = new shaka.Player(video);
+
+        player.configure({
+            streaming: {
+                bufferingGoal: 180,
+                rebufferingGoal: 15,
+                bufferBehind: 30,
+            }
+        });
+
+        player.addEventListener('error', onErrorEvent);
+
+        // Ajouter la piste de sous-titres
+        const subtitlesUri = 'http://localhost:5000/file.mkv/subtitle_1.vtt';
+        player.addTextTrackAsync(subtitlesUri, "fr", "subtitles", "text/vtt").then(function (subtitleTrack) {
+            // Activer les sous-titres par défaut
+            subtitleTrack.mode = 'showing';
+            subtitleTrack.selected = true;
+        });
+
+
+        player.load(videoSrc).then(function () {
+            console.log('The video has now been loaded!');
+        }).catch(onError);  // onError is executed if the asynchronous load fails.
+    }
+
+    function onErrorEvent(event) {
+        // Extraire l'erreur de l'événement
+        onError(event.detail);
+    }
+
+    function onError(error) {
+        // Enregistrer l'erreur dans la console
+        console.error('Une erreur s\'est produite:', error);
+    }
+</script>
+</body>
+</html>
