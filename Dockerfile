@@ -1,6 +1,9 @@
 # Étape de construction
 FROM golang:1.20 AS builder
 
+ENV GO111MODULE=on
+
+
 WORKDIR /app
 
 # Copier les fichiers de l'application
@@ -8,7 +11,7 @@ COPY . .
 
 # Compilation de l'application
 RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -x -ldflags "-s -w" -o app .
 
 # Étape de production
 FROM alpine:latest
@@ -28,6 +31,8 @@ VOLUME ["/mnt/media"]
 
 # Exposition du port de l'application
 EXPOSE 8080
+
+USER 1000:100
 
 # Commande pour démarrer l'application
 CMD ["./app"]
