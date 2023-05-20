@@ -10,21 +10,17 @@ import {VgBufferingModule} from "@videogular/ngx-videogular/buffering";
 import {VgStreamingModule} from "@videogular/ngx-videogular/streaming";
 
 @NgModule({
-  declarations: [
-    AppComponent,
-    VideoPlayerComponent
-  ],
+  declarations: [AppComponent, VideoPlayerComponent],
   imports: [
     BrowserModule,
     VgCoreModule,
     VgControlsModule,
     VgOverlayPlayModule,
     VgBufferingModule,
-    BrowserModule,
-    VgStreamingModule
+    VgStreamingModule,
   ],
   providers: [],
-  bootstrap: [AppComponent]
+  exports: [VideoPlayerComponent],
+  bootstrap: [AppComponent],
 })
-export class AppModule {
-}
+export class AppModule {}
